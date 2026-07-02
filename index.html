@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AX Lens — Finance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+
+  :root{
+    --ink:#F7F9FC; --ink-2:#FFFFFF; --ink-3:#EAF1F8;
+    --line:#E1E7EE;
+    --text:#15202B; --text-dim:#5B6878; --text-faint:#94A1AF;
+    --profit:#1E9E6B; --loss:#D14F3E;
+    --gold:#00A0E8; --my:#2A4499; --cn:#8B6fB3;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;padding:0 0 4rem;}
+  .wrap{max-width:1040px;margin:0 auto;padding:2.5rem 1.75rem;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-faint);margin:0 0 6px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:26px;margin:0 0 4px;letter-spacing:-0.01em;}
+  .subtitle{color:var(--text-dim);font-size:14px;margin:0;}
+
+  .alertbox{background:#FFF4F0;border:1px solid #F3C9BB;border-radius:12px;padding:14px 18px;margin:1.5rem 0;font-size:13px;color:#8A3A28;line-height:1.6;}
+  .alertbox b{color:#6E2A1C;}
+
+  .tabbar{display:flex;gap:8px;margin:1.75rem 0 1.5rem;flex-wrap:wrap;}
+  .tabbar button{background:var(--ink-2);border:1px solid var(--line);color:var(--text-dim);font-family:'Inter',sans-serif;font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:10px;cursor:pointer;}
+  .tabbar button.active{background:var(--gold);color:#fff;border-color:var(--gold);}
+
+  .controls{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:1.5rem;align-items:flex-end;}
+  .control-group label{display:block;font-size:11.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .seg button{background:var(--ink-2);border:none;color:var(--text-dim);font-family:'Inter',sans-serif;font-size:13px;font-weight:500;padding:7px 14px;cursor:pointer;border-right:1px solid var(--line);}
+  .seg button:last-child{border-right:none;}
+  .seg button.active{background:var(--gold);color:#fff;}
+  .data-note{font-size:11px;color:var(--text-faint);margin:6px 0 0;max-width:420px;line-height:1.5;}
+
+  .layertabs{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:1.5rem;}
+  .layertabs button{background:var(--ink-2);border:none;color:var(--text-dim);font-family:'Inter',sans-serif;font-size:13.5px;font-weight:600;padding:8px 16px;cursor:pointer;border-right:1px solid var(--line);}
+  .layertabs button:last-child{border-right:none;}
+  .layertabs button.active{background:var(--my);color:#fff;}
+
+  .page{display:none;}
+  .page.active{display:block;}
+  .layer{display:none;}
+  .layer.active{display:block;}
+
+  section{margin-bottom:2rem;}
+  .section-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1rem;flex-wrap:wrap;gap:8px;}
+  h2{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin:0;letter-spacing:-0.01em;}
+  .section-note{font-size:12px;color:var(--text-faint);margin:0;}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;}
+  .kpi-card{background:var(--ink-2);border:1px solid var(--line);border-radius:12px;padding:1rem 1.25rem;box-shadow:0 1px 3px rgba(21,32,43,0.06);}
+  .kpi-label{font-size:12.5px;color:var(--text-dim);margin:0 0 6px;}
+  .kpi-value{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;margin:0;}
+  .kpi-note{font-size:11px;color:var(--text-faint);margin:4px 0 0;font-family:'IBM Plex Mono',monospace;}
+
+  .panel{background:var(--ink-2);border:1px solid var(--line);border-radius:14px;padding:1.5rem;box-shadow:0 1px 3px rgba(21,32,43,0.06);}
+  .legend{display:flex;gap:18px;font-size:12px;color:var(--text-dim);margin-bottom:14px;flex-wrap:wrap;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .dot{width:9px;height:9px;border-radius:2px;display:inline-block;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:right;color:var(--text-faint);font-size:11.5px;text-transform:uppercase;letter-spacing:0.05em;font-weight:500;padding:0 0 10px;border-bottom:1px solid var(--line);}
+  th:first-child,td:first-child{text-align:left;}
+  td{padding:9px 0;border-bottom:1px solid var(--line);font-family:'IBM Plex Mono',monospace;text-align:right;}
+  tr:last-child td{border-bottom:none;}
+  .total-row td{border-top:2px double var(--line);border-bottom:none;font-weight:500;padding-top:11px;}
+  .rank{width:22px;text-align:left !important;color:var(--text-faint);}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+  @media (max-width:680px){
+    .kpi-grid,.grid2{grid-template-columns:1fr 1fr;}
+  }
+
+
+  #loadingScreen{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    height:100vh;gap:16px;
+  }
+  .spinner{
+    width:44px;height:44px;border:3px solid var(--line);
+    border-top-color:var(--gold);border-radius:50%;
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loadingMsg{font-size:14px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;}
+  #dashboardContent{display:none;}
+
+</style>
+</head>
+<body>
+
+<div id="loadingScreen">
+  <div class="spinner"></div>
+  <p id="loadingMsg">Connecting to Alpha X data…</p>
+</div>
+
+<div id="dashboardContent">
+
+<div class="wrap">
+
+  <div>
+    <p class="eyebrow">Alpha X · Consolidated finance · SG · MY · CN</p>
+    <h1>Finance Dashboard</h1>
+    <p class="subtitle" id="lastUpdated">Loading data from GitHub…</p>
+  </div>
+
+
+
+  <div class="tabbar" id="pageTabs">
+    <button data-page="cashflow" class="active">Cash Flow</button>
+    <button data-page="receivables">Receivables</button>
+    <button data-page="payables">Payables</button>
+    <button data-page="pl">Profit &amp; Loss</button>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>Entity</label>
+      <div class="seg" id="entitySeg"></div>
+    </div>
+    <div class="control-group">
+      <label>Period</label>
+      <div class="seg" id="periodSeg"></div>
+      <p class="data-note">Source data is monthly. Day-level figures aren't available; Year shows the full Jan–Jun range loaded so far.</p>
+    </div>
+  </div>
+
+  <!-- ============ CASH FLOW ============ -->
+  <div class="page active" id="page-cashflow">
+    <div class="layertabs" id="cfLayerTabs">
+      <button data-layer="board" class="active">Board</button>
+      <button data-layer="ops">Operation</button>
+    </div>
+
+    <div class="layer active" id="cf-board">
+      <section>
+        <div class="section-head"><h2>Bank balance</h2><p class="section-note">Total across selected entity/period</p></div>
+        <div class="kpi-grid">
+          <div class="kpi-card"><p class="kpi-label">Total bank balance</p><p class="kpi-value" id="cfBalance">—</p><p class="kpi-note" id="cfBalanceNote">—</p></div>
+          <div class="kpi-card"><p class="kpi-label">East West Bank (HQ)</p><p class="kpi-value" id="cfEastWest">—</p><p class="kpi-note">Held at HQ level, not entity-specific</p></div>
+        </div>
+      </section>
+      <section>
+        <div class="section-head"><h2>Cash inflow</h2><p class="section-note" id="cfInflowPeriodNote">Actual collected vs. still forecast</p></div>
+        <div class="kpi-grid">
+          <div class="kpi-card"><p class="kpi-label">Actual cash inflow</p><p class="kpi-value" id="cfActualIn" style="color:var(--profit)">—</p></div>
+          <div class="kpi-card"><p class="kpi-label">Forecast inflow (remaining)</p><p class="kpi-value" id="cfForecastIn">—</p><p class="kpi-note">Excludes amounts already collected</p></div>
+        </div>
+      </section>
+      <section>
+        <div class="section-head"><h2>Cash outflow</h2><p class="section-note" id="cfOutflowPeriodNote">Actual paid vs. still forecast</p></div>
+        <div class="kpi-grid">
+          <div class="kpi-card"><p class="kpi-label">Actual cash outflow</p><p class="kpi-value" id="cfActualOut" style="color:var(--loss)">—</p></div>
+          <div class="kpi-card"><p class="kpi-label">Forecast outflow (remaining)</p><p class="kpi-value" id="cfForecastOut">—</p><p class="kpi-note">Excludes amounts already paid</p></div>
+        </div>
+      </section>
+      <section>
+        <div class="section-head"><h2>Actual cash inflow &amp; outflow, by entity</h2><p class="section-note" id="cfBreakdownPeriodNote">—</p></div>
+        <div class="panel">
+          <table><thead><tr><th>Entity</th><th>Actual inflow</th><th>Actual outflow</th><th>Net</th></tr></thead><tbody id="cfEntityBreakdownTable"></tbody></table>
+        </div>
+      </section>
+      <section>
+        <div class="section-head"><h2>Projected balance after this month's outflow</h2><p class="section-note">Latest bank balance minus this month's remaining forecast outflow, by entity</p></div>
+        <div class="panel">
+          <table><thead><tr><th>Entity</th><th>Bank balance</th><th>− Forecast outflow (remaining)</th><th>= Projected balance</th></tr></thead><tbody id="netBalanceTable"></tbody></table>
+        </div>
+      </section>
+    </div>
+
+    <div class="layer" id="cf-ops">
+      <section>
+        <div class="section-head"><h2>Bank balance by entity</h2></div>
+        <div class="panel"><svg id="bankChart" viewBox="0 0 880 280" width="100%" style="overflow:visible"></svg></div>
+      </section>
+      <section>
+        <div class="grid2">
+          <div class="panel">
+            <h2 style="margin-bottom:14px">Top 5 inflow sources</h2>
+            <table><thead><tr><th></th><th>Client / Project</th><th>Amount</th></tr></thead><tbody id="topInflowTable"></tbody></table>
+            <p class="data-note">Outstanding receivables ranked by amount</p>
+          </div>
+          <div class="panel">
+            <h2 style="margin-bottom:14px">Top 5 outflow categories</h2>
+            <table><thead><tr><th></th><th>Category</th><th>Amount</th></tr></thead><tbody id="topOutflowTable"></tbody></table>
+            <p class="data-note">Paid expenses by category, selected period</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============ RECEIVABLES ============ -->
+  <div class="page" id="page-receivables">
+    <div class="layertabs" id="arLayerTabs">
+      <button data-layer="board" class="active">Board</button>
+      <button data-layer="ops">Operation</button>
+    </div>
+    <div class="layer active" id="ar-board">
+      <section>
+        <div class="kpi-grid">
+          <div class="kpi-card"><p class="kpi-label">Collection rate</p><p class="kpi-value" id="arCollectionRate" style="color:var(--profit)">—</p><p class="kpi-note" id="arCollectionPeriodNote">—</p></div>
+          <div class="kpi-card"><p class="kpi-label">Overdue %</p><p class="kpi-value" id="arOverduePct" style="color:var(--loss)">—</p><p class="kpi-note">Overdue AR ÷ total outstanding AR — as of today, not period-filtered</p></div>
+          <div class="kpi-card"><p class="kpi-label">Total receivables</p><p class="kpi-value" id="arTotal">—</p><p class="kpi-note">Outstanding as of today, not period-filtered</p></div>
+        </div>
+      </section>
+      <section>
+        <div class="section-head"><h2>Expected cash inflow, future months</h2><p class="section-note">From open invoices' Expected Inflow date, Jul–Dec 2026</p></div>
+        <div class="panel">
+          <svg id="futureInflowChart" viewBox="0 0 880 280" width="100%" style="overflow:visible"></svg>
+          <p class="data-note" style="margin-top:10px">Based on invoices already raised. Doesn't include revenue not yet invoiced, so later months will understate true expected inflow.</p>
+        </div>
+      </section>
+    </div>
+    <div class="layer" id="ar-ops">
+      <section>
+        <div class="grid2">
+          <div class="panel">
+            <h2 style="margin-bottom:14px">Receivables ranking</h2>
+            <table><thead><tr><th></th><th>Client</th><th>Outstanding</th></tr></thead><tbody id="arRankTable"></tbody></table>
+          </div>
+          <div class="panel">
+            <h2 style="margin-bottom:14px">Receivables ranking</h2>
+            <svg id="arRankChart" viewBox="0 0 400 280" width="100%" style="overflow:visible"></svg>
+          </div>
+        </div>
+      </section>
+      <section>
+        <div class="panel">
+          <h2 style="margin-bottom:14px">Due payments, by project</h2>
+          <table><thead><tr><th>Due date</th><th style="text-align:left">Status</th><th style="text-align:left">Client</th><th style="text-align:left">Project code</th><th>Amount</th></tr></thead><tbody id="duePaymentsTable"></tbody></table>
+          <p class="data-note" style="margin-top:10px">All outstanding invoices (Due/Pending/HOLD/New), sorted by due date. Not affected by the entity/period filters above — shows every open item so nothing gets missed.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============ PAYABLES ============ -->
+  <div class="page" id="page-payables">
+    <div class="layertabs" id="apLayerTabs">
+      <button data-layer="board" class="active">Board</button>
+      <button data-layer="ops">Operation</button>
+    </div>
+    <div class="layer active" id="ap-board">
+      <section>
+        <div class="kpi-grid">
+          <div class="kpi-card"><p class="kpi-label">Overdue %</p><p class="kpi-value" id="apOverduePct" style="color:var(--loss)">—</p><p class="kpi-note">Overdue AP ÷ total outstanding AP</p></div>
+          <div class="kpi-card"><p class="kpi-label">Total payables</p><p class="kpi-value" id="apTotal">—</p></div>
+        </div>
+        <p class="data-note" style="margin-top:10px">Payables days and Fixed Overhead rate aren't computed — they need a confirmed "paid date vs. bill date" definition and a confirmed fixed-cost category list from your finance team.</p>
+      </section>
+    </div>
+    <div class="layer" id="ap-ops">
+      <section>
+        <div class="grid2">
+          <div class="panel">
+            <h2 style="margin-bottom:14px">Payable ranking, by category</h2>
+            <table><thead><tr><th></th><th>Category</th><th>Outstanding</th></tr></thead><tbody id="apRankTable"></tbody></table>
+          </div>
+          <div class="panel">
+            <h2 style="margin-bottom:14px">Payable ranking, by category</h2>
+            <svg id="apRankChart" viewBox="0 0 400 280" width="100%" style="overflow:visible"></svg>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============ P&L ============ -->
+  <div class="page" id="page-pl">
+    <div class="layertabs" id="plLayerTabs">
+      <button data-layer="board" class="active">Board</button>
+      <button data-layer="ops">Operation</button>
+    </div>
+    <div class="layer active" id="pl-board">
+      <section>
+        <div class="section-head"><h2>Profit &amp; loss</h2><p class="section-note" id="plPeriodNote">—</p></div>
+        <div class="kpi-grid">
+          <div class="kpi-card"><p class="kpi-label">Total PO value</p><p class="kpi-value" id="plPoValue">—</p><p class="kpi-note">FY2026, not entity/period filtered — see note</p></div>
+          <div class="kpi-card"><p class="kpi-label">Total revenue</p><p class="kpi-value" id="plRevenue">—</p><p class="kpi-note" id="plPoPctNote">—</p></div>
+          <div class="kpi-card"><p class="kpi-label">Cost of goods sold</p><p class="kpi-value" id="plCogs">—</p></div>
+          <div class="kpi-card"><p class="kpi-label">Expenses</p><p class="kpi-value" id="plExpenses">—</p></div>
+          <div class="kpi-card"><p class="kpi-label">Net result</p><p class="kpi-value" id="plNet">—</p></div>
+          <div class="kpi-card"><p class="kpi-label">Gross profit margin</p><p class="kpi-value" id="plGrossMargin">—</p><p class="kpi-note">(Revenue − COGS) ÷ Revenue</p></div>
+          <div class="kpi-card"><p class="kpi-label">Net profit margin</p><p class="kpi-value" id="plNetMargin">—</p><p class="kpi-note">Net result ÷ Revenue</p></div>
+        </div>
+        <p class="data-note" style="margin-top:10px">PO value is the full-year total from the PO sheet (only 12 populated entries exist) — it doesn't break down by month/quarter, so it stays fixed regardless of the period filter above.</p>
+      </section>
+      <section>
+        <div class="grid2">
+          <div class="panel">
+            <h2 style="margin-bottom:14px">Total costs, composition</h2>
+            <svg id="costCompositionPie" viewBox="0 0 400 300" width="100%"></svg>
+            <p class="data-note" id="costCompositionNote" style="margin-top:6px">—</p>
+          </div>
+          <div class="panel">
+            <h2 style="margin-bottom:14px">Expenses, by group</h2>
+            <svg id="expenseGroupPie" viewBox="0 0 400 300" width="100%"></svg>
+            <p class="data-note" style="margin-top:6px">Full H1 total, all entities — not period/entity filtered. See Operation tab for the filtered breakdown.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="layer" id="pl-ops">
+      <section>
+        <div class="panel">
+          <div class="legend">
+            <span><span class="dot" style="background:var(--gold)"></span>Revenue</span>
+            <span><span class="dot" style="background:var(--ink-3);border:1px solid var(--text-faint)"></span>COGS + Expenses</span>
+          </div>
+          <svg id="plChart" viewBox="0 0 880 280" width="100%" style="overflow:visible"></svg>
+        </div>
+      </section>
+      <section>
+        <div class="grid2">
+          <div class="panel">
+            <h2 style="margin-bottom:14px">Expenses by group</h2>
+            <table><thead><tr><th>Group</th><th>Amount</th><th>% of total</th></tr></thead><tbody id="expenseGroupTable"></tbody></table>
+            <p class="data-note" style="margin-top:10px" id="expenseGroupErrorNote">—</p>
+          </div>
+          <div class="panel">
+            <h2 style="margin-bottom:14px">Expenses by group</h2>
+            <svg id="expenseGroupChart" viewBox="0 0 400 280" width="100%" style="overflow:visible"></svg>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+</div>
+
+
+</div>
+
+<script>
+const EXCEL_URL = 'https://raw.githubusercontent.com/AXFinance/AXLENS/main/Finance_Data_Conso_Dashboard.xlsx';
+const ENTITIES = ['SG','MY','CN'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun'];
+const MONTHS12 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const RATES_SANITY = {USD:1.0, SGD:0.78, CNY:0.144, MYR:0.235};
+const EXCLUDE_CATS = new Set(['Internal Fund Transfer','Intercompany']);
+
+function isCorrupted(curr, total, amt){
+  if(typeof total!=='number'||typeof amt!=='number') return false;
+  const rate = RATES_SANITY[curr];
+  if(!rate) return false;
+  const expected = total*rate;
+  if(Math.abs(expected)<0.01) return false;
+  return Math.abs(amt/expected - 1) > 0.5;
+}
+
+function toDate(v){ return v instanceof Date ? v : null; }
+
+async function loadAndParse(){
+  setStatus('Fetching latest data from GitHub…');
+  const resp = await fetch(EXCEL_URL);
+  if(!resp.ok) throw new Error('Could not fetch Excel file: '+resp.status);
+  const buf = await resp.arrayBuffer();
+  setStatus('Parsing workbook…');
+  const wb = XLSX.read(buf, {type:'array', cellDates:true});
+
+  function sheetRows(name){
+    const ws = wb.Sheets[name];
+    if(!ws) throw new Error('Sheet "'+name+'" not found');
+    return XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null});
+  }
+
+  // ---- BANK BALANCE ----
+  setStatus('Reading bank balances…');
+  const bankBalance = {SG:[0,0,0,0,0,0],MY:[0,0,0,0,0,0],CN:[0,0,0,0,0,0]};
+  const bankHQ = [0,0,0,0,0,0];
+  sheetRows('Bank ').slice(1).forEach(r=>{
+    const date=toDate(r[0]), ent=r[1], usd=r[5];
+    if(!date||date.getFullYear()!==2026||typeof usd!=='number') return;
+    const mi=date.getMonth();
+    if(mi>5) return;
+    if(ENTITIES.includes(ent)) bankBalance[ent][mi]+=usd;
+    else if(ent==='HQ') bankHQ[mi]+=usd;
+  });
+
+  // ---- AR ----
+  setStatus('Reading receivables…');
+  const actualInflow={SG:[0,0,0,0,0,0],MY:[0,0,0,0,0,0],CN:[0,0,0,0,0,0]};
+  const forecastInflow={SG:[0,0,0,0,0,0],MY:[0,0,0,0,0,0],CN:[0,0,0,0,0,0]};
+  const forecastInflow12mo={SG:Array(12).fill(0),MY:Array(12).fill(0),CN:Array(12).fill(0)};
+  const arInvoicedByMonth={SG:[0,0,0,0,0,0],MY:[0,0,0,0,0,0],CN:[0,0,0,0,0,0]};
+  const arCollectedByMonth={SG:[0,0,0,0,0,0],MY:[0,0,0,0,0,0],CN:[0,0,0,0,0,0]};
+  const arOutstanding={SG:0,MY:0,CN:0};
+  const arOverdue={SG:0,MY:0,CN:0};
+  const arInvoicedYTD={SG:0,MY:0,CN:0};
+  const arCollectedYTD={SG:0,MY:0,CN:0};
+  const clientOutstanding={};
+  const clientByEntity={SG:{},MY:{},CN:{}};
+  const today=new Date(2026,5,26);
+
+  let arHeader=null;
+  const arRows=sheetRows('AR');
+  arRows.forEach(r=>{
+    if(r[0]==='Status'){arHeader=r;return;}
+    if(!arHeader) return;
+    const status=String(r[0]||'').trim();
+    const ent=r[1], invDate=toDate(r[2]), dueDate=toDate(r[3]);
+    const expInflow=toDate(r[4]), payDate=toDate(r[5]);
+    const amt=r[10], client=r[11];
+    if(!ENTITIES.includes(ent)||typeof amt!=='number') return;
+
+    if(dueDate&&dueDate.getFullYear()===2026&&dueDate.getMonth()<6){
+      arInvoicedYTD[ent]+=amt;
+      arInvoicedByMonth[ent][dueDate.getMonth()]+=amt;
+    }
+    if(status==='Paid'){
+      if(payDate&&payDate.getFullYear()===2026&&payDate.getMonth()<6){
+        actualInflow[ent][payDate.getMonth()]+=amt;
+      }
+      if(dueDate&&dueDate.getFullYear()===2026&&dueDate.getMonth()<6){
+        arCollectedYTD[ent]+=amt;
+        arCollectedByMonth[ent][dueDate.getMonth()]+=amt;
+      }
+    } else if(['Due','Pending','New','HOLD','Forecast'].includes(status)){
+      if(expInflow&&expInflow.getFullYear()===2026){
+        if(expInflow.getMonth()<6) forecastInflow[ent][expInflow.getMonth()]+=amt;
+        forecastInflow12mo[ent][expInflow.getMonth()]+=amt;
+      }
+      if(status!=='Forecast'){
+        arOutstanding[ent]+=amt;
+        if(dueDate&&dueDate<today) arOverdue[ent]+=amt;
+        clientOutstanding[client]=(clientOutstanding[client]||0)+amt;
+        clientByEntity[ent][client]=(clientByEntity[ent][client]||0)+amt;
+      }
+    }
+  });
+
+  const topClients=Object.entries(clientOutstanding).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const topClientsByEntity={};
+  ENTITIES.forEach(e=>{ topClientsByEntity[e]=Object.entries(clientByEntity[e]).sort((a,b)=>b[1]-a[1]).slice(0,5); });
+
+  // ---- CF (Expenses, COGS, Outflow) ----
+  setStatus('Reading cash flow and expenses…');
+  const revenue={SG:[0,0,0,0,0,0],MY:[0,0,0,0,0,0],CN:[0,0,0,0,0,0]};
+  const cogs={SG:[0,0,0,0,0,0],MY:[0,0,0,0,0,0],CN:[0,0,0,0,0,0]};
+  const expenses={SG:[0,0,0,0,0,0],MY:[0,0,0,0,0,0],CN:[0,0,0,0,0,0]};
+  const actualOutflow={SG:[0,0,0,0,0,0],MY:[0,0,0,0,0,0],CN:[0,0,0,0,0,0]};
+  const forecastOutflow={SG:[0,0,0,0,0,0],MY:[0,0,0,0,0,0],CN:[0,0,0,0,0,0]};
+  const apOutstanding={SG:0,MY:0,CN:0};
+  const apOverdue={SG:0,MY:0,CN:0};
+  const catOutstanding={};
+  const expCatTotal={};
+  const expCatByEntity={SG:{},MY:{},CN:{}};
+  const expGroupTotal={};
+  let corrected=0, excluded=0;
+
+  sheetRows('CF').slice(1).forEach(r=>{
+    const status=String(r[0]||'').trim();
+    const ent=r[1];
+    if(!ENTITIES.includes(ent)) return;
+    const billDate=toDate(r[2]), dueDate=toDate(r[3]), payDate=toDate(r[4]);
+    const curr=r[5], total=r[8], amt=r[9];
+    const cat=r[14], group=r[16];
+    if(typeof total!=='number') return;
+    let useAmt=amt;
+    if(isCorrupted(curr,total,amt)){
+      excluded++;
+      return;
+    }
+    if(typeof useAmt!=='number') return;
+    const isCogs=(group==='DSC');
+    const isInternal=EXCLUDE_CATS.has(cat);
+    const isExp=!isCogs&&!isInternal&&cat!=='Revenue'&&cat!=='Other Income'&&group!=null;
+
+    if(status==='Paid'){
+      if(!isInternal&&payDate&&payDate.getFullYear()===2026&&payDate.getMonth()<6)
+        actualOutflow[ent][payDate.getMonth()]+=useAmt;
+      if(billDate&&billDate.getFullYear()===2026&&billDate.getMonth()<6){
+        if(isCogs) cogs[ent][billDate.getMonth()]+=useAmt;
+        else if(isExp) expenses[ent][billDate.getMonth()]+=useAmt;
+      }
+      if(isExp){
+        const c=cat||'Uncategorized';
+        expCatTotal[c]=(expCatTotal[c]||0)+useAmt;
+        expCatByEntity[ent][c]=(expCatByEntity[ent][c]||0)+useAmt;
+        const g=group||'Uncategorized';
+        if(g!=='ERROR') expGroupTotal[g]=(expGroupTotal[g]||0)+useAmt;
+      }
+    } else if(status==='Pending'&&!isInternal){
+      if(dueDate&&dueDate.getFullYear()===2026&&dueDate.getMonth()<6)
+        forecastOutflow[ent][dueDate.getMonth()]+=useAmt;
+      apOutstanding[ent]+=useAmt;
+      if(dueDate&&dueDate<today) apOverdue[ent]+=useAmt;
+      const c=cat||'Uncategorized';
+      catOutstanding[c]=(catOutstanding[c]||0)+useAmt;
+    } else if(status==='Forecast'&&!isInternal){
+      if(dueDate&&dueDate.getFullYear()===2026&&dueDate.getMonth()<6)
+        forecastOutflow[ent][dueDate.getMonth()]+=useAmt;
+    }
+  });
+
+  const topExpCats=Object.entries(expCatTotal).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const topExpByEntity={};
+  ENTITIES.forEach(e=>{ topExpByEntity[e]=Object.entries(expCatByEntity[e]).sort((a,b)=>b[1]-a[1]).slice(0,5); });
+  const topPayCats=Object.entries(catOutstanding).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const expGroups=Object.entries(expGroupTotal).sort((a,b)=>b[1]-a[1]);
+
+  // ---- AR (Revenue from AR sheet invoice dates) ----
+  // Revenue already computed in arRows pass above via invDate
+  // Re-read from AR
+  arRows.forEach(r=>{
+    if(r[0]==='Status') return;
+    const ent=r[1], invDate=toDate(r[2]), amt=r[10];
+    if(!ENTITIES.includes(ent)||typeof amt!=='number') return;
+    if(invDate&&invDate.getFullYear()===2026&&invDate.getMonth()<6)
+      revenue[ent][invDate.getMonth()]+=amt;
+  });
+
+  // ---- DUE PAYMENTS ----
+  const dueList=[];
+  arRows.forEach(r=>{
+    if(r[0]==='Status') return;
+    const status=String(r[0]||'').trim();
+    if(['Status','Paid','Forecast','Declined',''].includes(status)) return;
+    const ent=r[1];
+    if(!ENTITIES.includes(ent)) return;
+    const dueDate=toDate(r[3]), amt=r[10], client=r[11], projCode=r[14];
+    if(typeof amt!=='number') return;
+    dueList.push({entity:ent,status,due_date:dueDate?dueDate.toISOString().slice(0,10):null,amount:amt,client,project_code:projCode});
+  });
+  dueList.sort((a,b)=>(a.due_date||'9999').localeCompare(b.due_date||'9999'));
+
+  // ---- PO VALUE ----
+  let poValueTotal=0;
+  try{
+    sheetRows('PO').slice(1).forEach(r=>{ if(typeof r[5]==='number') poValueTotal+=r[5]; });
+  }catch(e){}
+
+  return {
+    bankBalance,bankHQ,revenue,actualInflow,forecastInflow,forecastInflow12mo,
+    arInvoicedByMonth,arCollectedByMonth,arOutstanding,arOverdue,
+    arInvoicedYTD,arCollectedYTD,topClients,topClientsByEntity,
+    actualOutflow,forecastOutflow,cogs,expenses,
+    apOutstanding,apOverdue,topExpCats,topExpByEntity,topPayCats,
+    expGroups,dueList,poValueTotal,excluded
+  };
+}
+
+
+
+function setStatus(msg){ document.getElementById('loadingMsg').textContent = msg; }
+
+async function init(){
+  document.getElementById('loadingScreen').style.display='flex';
+  document.getElementById('dashboardContent').style.display='none';
+  try{
+    const d = await loadAndParse();
+    // Inject all data into global scope
+    window.bankBalance = d.bankBalance;
+    window.bankHQ = d.bankHQ;
+    window.revenue = d.revenue;
+    window.actualInflow = d.actualInflow;
+    window.forecastInflow = d.forecastInflow;
+    window.forecastInflow12mo = d.forecastInflow12mo;
+    window.arInvoicedByMonth = d.arInvoicedByMonth;
+    window.arCollectedByMonth = d.arCollectedByMonth;
+    window.arOutstanding = d.arOutstanding;
+    window.arOverdue = d.arOverdue;
+    window.arInvoicedYTD = d.arInvoicedYTD;
+    window.arCollectedYTD = d.arCollectedYTD;
+    window.topClients = d.topClients;
+    window.topClientsByEntity = d.topClientsByEntity;
+    window.actualOutflow = d.actualOutflow;
+    window.forecastOutflow = d.forecastOutflow;
+    window.cogs = d.cogs;
+    window.expenses = d.expenses;
+    window.apOutstanding = d.apOutstanding;
+    window.apOverdue = d.apOverdue;
+    window.topExpenseCategories = d.topExpCats;
+    window.topExpenseByEntity = d.topExpByEntity;
+    window.topPayableCategories = d.topPayCats;
+    window.expenseGroups = d.expGroups;
+    window.expenseGroupsErrorAmount = 0;
+    window.dueList = d.dueList;
+    window.poValueTotal = d.poValueTotal;
+
+    document.getElementById('lastUpdated').textContent =
+      'Live data — fetched ' + new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    document.getElementById('loadingScreen').style.display='none';
+    document.getElementById('dashboardContent').style.display='block';
+    buildSeg('entitySeg', ['All','SG','MY','CN'], 'entity', render);
+    buildSeg('periodSeg', ['Month','Quarter','Year'], 'period', render);
+    buildTabs('pageTabs', {cashflow:'page-cashflow', receivables:'page-receivables', payables:'page-payables', pl:'page-pl'}, true);
+    buildTabs('cfLayerTabs', {board:'cf-board', ops:'cf-ops'}, false);
+    buildTabs('arLayerTabs', {board:'ar-board', ops:'ar-ops'}, false);
+    buildTabs('apLayerTabs', {board:'ap-board', ops:'ap-ops'}, false);
+    buildTabs('plLayerTabs', {board:'pl-board', ops:'pl-ops'}, false);
+    render();
+  } catch(err){
+    document.getElementById('loadingMsg').textContent = 'Failed to load: ' + err.message;
+    document.getElementById('loadingMsg').style.color = '#D14F3E';
+    console.error(err);
+  }
+}
+
+
+let state = { entity:'All', period:'Month' };
+
+function fmt(n){ const s=n<0?'-':''; return s+'$'+Math.abs(Math.round(n)).toLocaleString('en-US'); }
+function pct(n){ const s=n<0?'-':''; return s+Math.abs(n).toFixed(1)+'%'; }
+
+function entityList(){ return state.entity==='All' ? ENTITIES : [state.entity]; }
+
+function sumSeries(obj){
+  const ents = entityList();
+  const out = new Array(6).fill(0);
+  ents.forEach(e=>{ (obj[e]||[]).forEach((v,i)=>out[i]+=v); });
+  return out;
+}
+function sumSeries12(obj){
+  const ents = entityList();
+  const out = new Array(12).fill(0);
+  ents.forEach(e=>{ (obj[e]||[]).forEach((v,i)=>out[i]+=v); });
+  return out;
+}
+function sumScalar(obj){
+  return entityList().reduce((a,e)=>a+(obj[e]||0),0);
+}
+
+function periodTotal(arr){
+  if(state.period==='Month') return arr[arr.length-1] || 0;
+  if(state.period==='Quarter') return arr.slice(-3).reduce((a,b)=>a+b,0);
+  return arr.reduce((a,b)=>a+b,0); // Year = full range loaded so far
+}
+
+function aggregateForChart(arr){
+  if(state.period==='Month') return { labels:MONTHS, values:arr };
+  if(state.period==='Quarter'){
+    const labels=[],values=[];
+    for(let i=0;i<arr.length;i+=3){ labels.push('Q'+(Math.floor(i/3)+1)); values.push(arr.slice(i,i+3).reduce((a,b)=>a+b,0)); }
+    return {labels,values};
+  }
+  return { labels:['H1 2026'], values:[arr.reduce((a,b)=>a+b,0)] };
+}
+
+function buildSeg(id, options, key, onChange){
+  const el = document.getElementById(id);
+  el.innerHTML = options.map(o=>`<button data-val="${o}">${o}</button>`).join('');
+  el.querySelectorAll('button').forEach(btn=>{
+    if(btn.dataset.val===state[key]) btn.classList.add('active');
+    btn.addEventListener('click',()=>{
+      state[key]=btn.dataset.val;
+      el.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      onChange();
+    });
+  });
+}
+
+function buildTabs(id, pageMap, isPage){
+  const el = document.getElementById(id);
+  el.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      el.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      Object.values(pageMap).forEach(p=>document.getElementById(p).classList.remove('active'));
+      document.getElementById(pageMap[btn.dataset[isPage?'page':'layer']]).classList.add('active');
+    });
+  });
+}
+
+
+function drawBarChart(svgId, seriesA, seriesB, colorA, colorB, showValues){
+  const svg = document.getElementById(svgId);
+  const w=880,h=280,padL=70,padR=20,padT=showValues?36:20,padB=36;
+  const plotW=w-padL-padR, plotH=h-padT-padB;
+  const labels = seriesA.labels;
+  const n = labels.length;
+  const groupW = plotW/n;
+  const barW = Math.min(groupW*0.3,90);
+  const allVals = [...seriesA.values, ...(seriesB?seriesB.values:[])];
+  const maxV = Math.max(...allVals,1);
+  const minV = Math.min(...allVals,0);
+  const yMax=maxV*1.15, yMin=minV*1.15;
+  const yScale=v=>padT+plotH-(v-yMin)/(yMax-yMin)*plotH;
+  const zeroY=yScale(0);
+  let grid='';
+  for(let i=0;i<=4;i++){
+    const val=yMin+(yMax-yMin)*i/4, yy=yScale(val);
+    grid+=`<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${w-padR}" y2="${yy.toFixed(1)}" stroke="var(--line)"/>`;
+    grid+=`<text x="${padL-10}" y="${(yy+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--text-faint)" font-family="IBM Plex Mono,monospace">${(val/1000).toFixed(0)}k</text>`;
+  }
+  let bars='', labelsHtml='';
+  for(let i=0;i<n;i++){
+    const gx=padL+i*groupW;
+    if(seriesB){
+      const cx1=gx+groupW*0.28, cx2=gx+groupW*0.56;
+      const a=seriesA.values[i], b=seriesB.values[i];
+      bars+=`<rect x="${cx1.toFixed(1)}" y="${Math.min(yScale(a),zeroY).toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.abs(zeroY-yScale(a)).toFixed(1)}" fill="${colorA}" rx="2"/>`;
+      bars+=`<rect x="${cx2.toFixed(1)}" y="${Math.min(yScale(b),zeroY).toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.abs(zeroY-yScale(b)).toFixed(1)}" fill="${colorB}" stroke="var(--text-faint)" stroke-width="0.5" rx="2"/>`;
+    } else {
+      const cx=gx+groupW*0.35;
+      const a=seriesA.values[i];
+      bars+=`<rect x="${cx.toFixed(1)}" y="${Math.min(yScale(a),zeroY).toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.abs(zeroY-yScale(a)).toFixed(1)}" fill="${colorA}" rx="2"/>`;
+      if(showValues){
+        const labelY = Math.min(yScale(a),zeroY) - 6;
+        bars+=`<text x="${(cx+barW/2).toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle" font-size="11" fill="var(--text-dim)" font-family="IBM Plex Mono,monospace">${fmt(a)}</text>`;
+      }
+    }
+    labelsHtml+=`<text x="${(gx+groupW/2).toFixed(1)}" y="${h-12}" text-anchor="middle" font-size="13" fill="var(--text-dim)">${labels[i]}</text>`;
+  }
+  svg.innerHTML = `${grid}<line x1="${padL}" y1="${zeroY.toFixed(1)}" x2="${w-padR}" y2="${zeroY.toFixed(1)}" stroke="var(--text-faint)"/>${bars}${labelsHtml}`;
+}
+
+function drawPieChart(svgId, data, colors){
+  const svg = document.getElementById(svgId);
+  const w=400, h=300, cx=140, cy=150, r=110;
+  const total = data.reduce((a,d)=>a+Math.abs(d[1]),0);
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  if(total<=0){ svg.innerHTML = `<text x="${cx}" y="${cy}" text-anchor="middle" font-size="13" fill="var(--text-faint)">No data</text>`; return; }
+  let angle = -Math.PI/2;
+  let slices='', legend='';
+  data.forEach((d,i)=>{
+    const frac = Math.abs(d[1])/total;
+    const sweep = frac*2*Math.PI;
+    const x1 = cx + r*Math.cos(angle), y1 = cy + r*Math.sin(angle);
+    const endAngle = angle+sweep;
+    const x2 = cx + r*Math.cos(endAngle), y2 = cy + r*Math.sin(endAngle);
+    const largeArc = sweep > Math.PI ? 1 : 0;
+    const color = colors[i % colors.length];
+    slices += `<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${largeArc} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${color}" stroke="var(--ink-2)" stroke-width="2"/>`;
+    legend += `<g transform="translate(270, ${20+i*26})"><rect width="11" height="11" rx="2" fill="${color}"/><text x="18" y="10" font-size="11.5" fill="var(--text-dim)" font-family="Inter,sans-serif">${d[0]} — ${(frac*100).toFixed(1)}%</text></g>`;
+    angle = endAngle;
+  });
+  svg.innerHTML = slices + legend;
+}
+
+function drawHorizontalBars(svgId, data, color){
+  const svg = document.getElementById(svgId);
+  const w=400, rowH=44, padL=10, padR=70, padT=10;
+  const h = padT*2 + data.length*rowH;
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  const maxV = Math.max(...data.map(d=>Math.abs(d[1])),1);
+  const plotW = w-padL-padR-100;
+  let html='';
+  data.forEach((d,i)=>{
+    const y = padT + i*rowH;
+    const barW = Math.max(Math.abs(d[1])/maxV*plotW, 2);
+    html += `<text x="${padL}" y="${y+14}" font-size="12" fill="var(--text-dim)" font-family="Inter,sans-serif">${d[0]}</text>`;
+    html += `<rect x="${padL+100}" y="${y+18}" width="${barW.toFixed(1)}" height="14" fill="${color}" rx="3"/>`;
+    html += `<text x="${(padL+100+barW+8).toFixed(1)}" y="${y+29}" font-size="11" fill="var(--text-faint)" font-family="IBM Plex Mono,monospace">${fmt(d[1])}</text>`;
+  });
+  svg.innerHTML = html;
+}
+
+function periodLabel(){
+  if(state.period==='Month') return MONTHS[MONTHS.length-1] + ' 2026 (latest month)';
+  if(state.period==='Quarter') return 'Q2 2026 (Apr–Jun, latest quarter)';
+  return 'Jan–Jun 2026 (full year loaded so far)';
+}
+
+function render(){
+  document.getElementById('cfInflowPeriodNote').textContent = 'Actual collected vs. still forecast — ' + periodLabel();
+  document.getElementById('cfOutflowPeriodNote').textContent = 'Actual paid vs. still forecast — ' + periodLabel();
+  document.getElementById('plPeriodNote').textContent = periodLabel();
+  const balArr = sumSeries(bankBalance);
+  const balLatest = balArr[balArr.length-1];
+  const ewLatest = bankHQ[bankHQ.length-1];
+  document.getElementById('cfEastWest').textContent = fmt(ewLatest);
+  const includesHQ = state.entity === 'All';
+  const totalWithHQ = includesHQ ? balLatest + ewLatest : balLatest;
+  document.getElementById('cfBalance').textContent = fmt(totalWithHQ);
+  document.getElementById('cfBalanceNote').textContent = includesHQ ? 'Includes East West Bank' : 'Entity-level only, excludes East West Bank';
+
+  const actualInArr = sumSeries(actualInflow);
+  const forecastInArr = sumSeries(forecastInflow);
+  const actualOutArr = sumSeries(actualOutflow);
+  const forecastOutArr = sumSeries(forecastOutflow);
+
+  document.getElementById('cfActualIn').textContent = fmt(periodTotal(actualInArr));
+  document.getElementById('cfForecastIn').textContent = fmt(periodTotal(forecastInArr));
+  document.getElementById('cfActualOut').textContent = fmt(periodTotal(actualOutArr));
+  document.getElementById('cfForecastOut').textContent = fmt(periodTotal(forecastOutArr));
+
+  drawBarChart('bankChart', aggregateForChart(balArr), null, 'var(--gold)');
+
+  // Bank balance net of forecast outflow, by entity
+  document.getElementById('netBalanceTable').innerHTML = entityList().map(e=>{
+    const bal = (bankBalance[e]||[0])[bankBalance[e].length-1] || 0;
+    const fOut = (forecastOutflow[e]||[0])[forecastOutflow[e].length-1] || 0;
+    const net = bal - fOut;
+    return `<tr><td>${e}</td><td>${fmt(bal)}</td><td>${fmt(fOut)}</td><td style="font-weight:600;color:${net<0?'var(--loss)':'var(--text)'}">${fmt(net)}</td></tr>`;
+  }).join('');
+
+  // Actual inflow/outflow by entity
+  document.getElementById('cfBreakdownPeriodNote').textContent = periodLabel();
+  document.getElementById('cfEntityBreakdownTable').innerHTML = entityList().map(e=>{
+    const inArr = actualInflow[e]||new Array(6).fill(0);
+    const outArr = actualOutflow[e]||new Array(6).fill(0);
+    const inTotal = periodTotal(inArr);
+    const outTotal = periodTotal(outArr);
+    const net = inTotal - outTotal;
+    return `<tr><td>${e}</td><td style="color:var(--profit)">${fmt(inTotal)}</td><td style="color:var(--loss)">${fmt(outTotal)}</td><td style="font-weight:600;color:${net<0?'var(--loss)':'var(--profit)'}">${fmt(net)}</td></tr>`;
+  }).join('');
+
+  // Top 5 inflow/outflow sources — now entity-aware
+  const inflowSource = state.entity==='All' ? topClients : (topClientsByEntity[state.entity]||[]);
+  const outflowSource = state.entity==='All' ? topExpenseCategories : (topExpenseByEntity[state.entity]||[]);
+  document.getElementById('topInflowTable').innerHTML = inflowSource.length ? inflowSource.map((c,i)=>
+    `<tr><td class="rank">${i+1}</td><td>${c[0]}</td><td>${fmt(c[1])}</td></tr>`).join('')
+    : '<tr><td colspan="3" style="text-align:center;color:var(--text-faint)">No outstanding receivables for this entity</td></tr>';
+  document.getElementById('topOutflowTable').innerHTML = outflowSource.length ? outflowSource.map((c,i)=>
+    `<tr><td class="rank">${i+1}</td><td>${c[0]}</td><td>${fmt(c[1])}</td></tr>`).join('')
+    : '<tr><td colspan="3" style="text-align:center;color:var(--text-faint)">No paid expenses for this entity</td></tr>';
+
+  const invoicedArr = sumSeries(arInvoicedByMonth);
+  const collectedArr = sumSeries(arCollectedByMonth);
+  const invoiced = periodTotal(invoicedArr);
+  const collected = periodTotal(collectedArr);
+  const outstanding = sumScalar(arOutstanding);
+  const overdue = sumScalar(arOverdue);
+  document.getElementById('arCollectionRate').textContent = invoiced>0 ? pct(collected/invoiced*100) : '—';
+  document.getElementById('arCollectionPeriodNote').textContent = 'Collected ÷ due, ' + periodLabel();
+  document.getElementById('arOverduePct').textContent = outstanding>0 ? pct(overdue/outstanding*100) : '—';
+  document.getElementById('arTotal').textContent = fmt(outstanding);
+  document.getElementById('arRankTable').innerHTML = topClients.map((c,i)=>
+    `<tr><td class="rank">${i+1}</td><td>${c[0]}</td><td>${fmt(c[1])}</td></tr>`).join('');
+  drawHorizontalBars('arRankChart', topClients, 'var(--gold)');
+
+  const futureSeries = sumSeries12(forecastInflow12mo).slice(6); // Jul-Dec
+  drawBarChart('futureInflowChart', { labels: MONTHS12.slice(6), values: futureSeries }, null, 'var(--gold)', null, true);
+
+  const filteredDue = state.entity==='All' ? dueList : dueList.filter(d=>d.entity===state.entity);
+  document.getElementById('duePaymentsTable').innerHTML = filteredDue.length ? filteredDue.map(d=>
+    `<tr><td>${d.due_date||'—'}</td><td style="text-align:left;font-family:Inter,sans-serif">${d.status}</td><td style="text-align:left;font-family:Inter,sans-serif">${d.client}</td><td style="text-align:left;font-family:Inter,sans-serif;font-size:12px">${d.project_code}</td><td>${fmt(d.amount)}</td></tr>`
+  ).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text-faint)">No outstanding invoices for this entity</td></tr>';
+
+  const apOut = sumScalar(apOutstanding);
+  const apOvd = sumScalar(apOverdue);
+  document.getElementById('apOverduePct').textContent = apOut>0 ? pct(apOvd/apOut*100) : '—';
+  document.getElementById('apTotal').textContent = fmt(apOut);
+  document.getElementById('apRankTable').innerHTML = topPayableCategories.map((c,i)=>
+    `<tr><td class="rank">${i+1}</td><td>${c[0]}</td><td>${fmt(c[1])}</td></tr>`).join('');
+  drawHorizontalBars('apRankChart', topPayableCategories, 'var(--loss)');
+
+  const revArr = sumSeries(revenue);
+  const cogsArr = sumSeries(cogs);
+  const expArr = sumSeries(expenses);
+  const costArr = cogsArr.map((v,i)=>v+expArr[i]);
+  const totalRev = periodTotal(revArr);
+  const totalCogs = periodTotal(cogsArr);
+  const totalExp = periodTotal(expArr);
+  const totalNet = totalRev - totalCogs - totalExp;
+  document.getElementById('plRevenue').textContent = fmt(totalRev);
+  document.getElementById('plCogs').textContent = fmt(totalCogs);
+  document.getElementById('plExpenses').textContent = fmt(totalExp);
+  const netEl = document.getElementById('plNet');
+  netEl.textContent = fmt(totalNet);
+  netEl.style.color = totalNet<0 ? 'var(--loss)' : 'var(--profit)';
+
+  const grossMargin = totalRev !== 0 ? (totalRev-totalCogs)/totalRev*100 : 0;
+  const netMargin = totalRev !== 0 ? totalNet/totalRev*100 : 0;
+  const gmEl = document.getElementById('plGrossMargin');
+  gmEl.textContent = pct(grossMargin);
+  gmEl.style.color = grossMargin<0 ? 'var(--loss)' : 'var(--profit)';
+  const nmEl = document.getElementById('plNetMargin');
+  nmEl.textContent = pct(netMargin);
+  nmEl.style.color = netMargin<0 ? 'var(--loss)' : 'var(--profit)';
+
+  document.getElementById('plPoValue').textContent = fmt(poValueTotal);
+  document.getElementById('plPoPctNote').textContent = poValueTotal>0 ? pct(totalRev/poValueTotal*100) + ' of PO value invoiced' : '\u00a0';
+
+  drawPieChart('costCompositionPie', [['COGS', totalCogs], ['Expenses', totalExp]], ['var(--my)','var(--gold)']);
+  document.getElementById('costCompositionNote').textContent = periodLabel() + ', ' + (state.entity==='All' ? 'all entities' : state.entity);
+
+  const pieColors = ['var(--my)','var(--gold)','var(--cn)','var(--loss)','var(--text-faint)'];
+  drawPieChart('expenseGroupPie', expenseGroups, pieColors);
+
+  drawBarChart('plChart', aggregateForChart(revArr), aggregateForChart(costArr), 'var(--gold)', 'var(--ink-3)');
+
+  const egTotal = expenseGroups.reduce((a,g)=>a+g[1],0);
+  document.getElementById('expenseGroupTable').innerHTML = expenseGroups.map(g=>
+    `<tr><td>${g[0]}</td><td>${fmt(g[1])}</td><td>${egTotal>0?pct(g[1]/egTotal*100):'—'}</td></tr>`).join('');
+  document.getElementById('expenseGroupErrorNote').textContent = expenseGroupsErrorAmount > 0
+    ? `${fmt(expenseGroupsErrorAmount)} of paid expenses had a corrupted category field in the source and is excluded from this breakdown (still included in the Expenses total above).`
+    : '\u00a0';
+  drawHorizontalBars('expenseGroupChart', expenseGroups, 'var(--my)');
+}
+
+
+
+init();
+</script>
+</body>
+</html>
