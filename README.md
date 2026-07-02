@@ -1,2 +1,2 @@
-# AX LENS
+# Ax Lens
 Alpha X Finance Dashboard
